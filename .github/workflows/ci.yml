@@ -1,0 +1,93 @@
+name: DokkuChat CI
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch: # re-run the build/deploy by hand from the Actions tab
+
+permissions:
+  contents: read
+
+# Never cancel a run mid-push; queue newer ones instead.
+concurrency:
+  group: docker-main
+  cancel-in-progress: false
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dokkuchat
+      # Throwaway values for the smoke test only. Nothing here is a real secret.
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      HEALTH_PATH: /api/v1/health
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set image name and tag
+        run: |
+          echo "SHA_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          echo "APP_IMAGE=${IMAGE}:${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Build image with Docker Compose
+        run: docker compose build app
+
+      # The container's entrypoint runs `prisma migrate deploy` before the app starts,
+      # so this step also proves the migrations apply to a fresh Postgres.
+      - name: Start stack with Docker Compose
+        run: docker compose up -d --wait --wait-timeout 120 app
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:18080${HEALTH_PATH}"; then
+              echo; echo "App is up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "App did not become healthy"; exit 1
+
+      - name: Show compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Push to Docker Hub
+        run: |
+          docker push "${IMAGE}:${SHA_TAG}"
+          docker tag "${IMAGE}:${SHA_TAG}" "${IMAGE}:latest"
+          docker push "${IMAGE}:latest"
+
+      - name: Print image name
+        run: |
+          echo "Image pushed:"
+          echo "  ${IMAGE}:${SHA_TAG}"
+          echo "  ${IMAGE}:latest"
+          {
+            echo "### Docker image pushed"
+            echo
+            echo "- \`${IMAGE}:${SHA_TAG}\`"
+            echo "- \`${IMAGE}:latest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          # Deploy the exact image we just pushed. imgURL must be URL-encoded.
+          IMG_URL=$(printf '%s' "docker.io/${IMAGE}:${SHA_TAG}" | jq -sRr @uri)
+          echo "Asking Render to deploy docker.io/${IMAGE}:${SHA_TAG}"
+          curl -fsS -o /dev/null -w "Render responded with HTTP %{http_code}\n" \
+            "${RENDER_DEPLOY_HOOK_URL}&imgURL=${IMG_URL}"
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

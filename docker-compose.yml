@@ -1,0 +1,127 @@
+name: dokkuchat
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dokkuchat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dokkuchat}
+      POSTGRES_DB: ${POSTGRES_DB:-dokkuchat}
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-54320}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Throwaway DB for tests: data lives in RAM.
+  # Start with: docker compose --profile test up -d
+  postgres-test:
+    image: pgvector/pgvector:pg16
+    profiles: ['test']
+    environment:
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-dokkuchat}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-dokkuchat}
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-dokkuchat_test}
+    ports:
+      - '127.0.0.1:${POSTGRES_TEST_HOST_PORT:-54330}:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --requirepass
+      - ${REDIS_PASSWORD:-dokkuchat}
+    environment:
+      # redis-cli reads this automatically, so the healthcheck needs no password flag
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-dokkuchat}
+    ports:
+      - '127.0.0.1:${REDIS_HOST_PORT:-63790}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-dokkuchat}:${POSTGRES_PASSWORD:-dokkuchat}@postgres:5432/${POSTGRES_DB:-dokkuchat}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dokkuchat}@redis:6379
+    ports:
+      - '${APP_PORT:-18080}:8080'
+    command: sh -c "npx prisma migrate deploy && npm start"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8080/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+    ports:
+      - '127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}:9090'
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-dokkuchat}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    ports:
+      - '127.0.0.1:${GRAFANA_HOST_PORT:-13000}:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+    name: dokkuchat_postgres
+  redis_data:
+    name: dokkuchat_redis_data
+  prometheus_data:
+    name: dokkuchat_prometheus_data
+  grafana_data:
+    name: dokkuchat_grafana_data

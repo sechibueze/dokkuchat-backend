@@ -5,7 +5,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
-  PORT: z.coerce.number().int().positive().default(18080),
+  PORT: z.coerce.number().int().positive().default(18000),
   DATABASE_URL: z.url(),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
   CORS_ORIGINS: z

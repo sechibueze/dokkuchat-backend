@@ -27,6 +27,7 @@ ENV NODE_ENV=production
 # Keep node_modules so Prisma migrations can run at startup.
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/src/database ./src/database
 COPY --from=build --chown=node:node /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node package.json ./
 

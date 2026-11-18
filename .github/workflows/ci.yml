@@ -22,7 +22,7 @@ jobs:
       # Throwaway values for the smoke test only. Nothing here is a real secret.
       JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-      HEALTH_PATH: /api/v1/health
+      HEALTH_PATH: /health
 
     steps:
       - uses: actions/checkout@v4

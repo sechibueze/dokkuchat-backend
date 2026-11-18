@@ -10,55 +10,85 @@ permissions:
 
 # Never cancel a run mid-push; queue newer ones instead.
 concurrency:
-  group: docker-main
+  group: docker-development
   cancel-in-progress: false
 
 jobs:
   docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     env:
       IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dokkuchat
-      # Throwaway values for the smoke test only. Nothing here is a real secret.
-      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-      HEALTH_PATH: /api/v1/health
+      HEALTH_URL: http://127.0.0.1:18080/api/v1/health
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set image name and tag
         run: |
           echo "SHA_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
           echo "APP_IMAGE=${IMAGE}:${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
+      # Compose reads .env automatically. These are random, per-run values used
+      # only for the smoke test, never the real production secrets.
+      - name: Create throwaway .env for the smoke test
+        run: |
+          {
+            echo "NODE_ENV=production"
+            echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)"
+            echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)"
+          } > .env
+
       - name: Build image with Docker Compose
         run: docker compose build app
 
-      # The container's entrypoint runs `prisma migrate deploy` before the app starts,
+      # Compose names the built image "<project>-<service>" (dokkuchat-app) because
+      # the app service has no `image:` key, so tag it with the name we push.
+      - name: Tag built image
+        run: |
+          docker tag dokkuchat-app "${APP_IMAGE}"
+          docker image inspect "${APP_IMAGE}" > /dev/null
+
+      # The container command runs `prisma migrate deploy` before the app starts,
       # so this step also proves the migrations apply to a fresh Postgres.
+      # --wait blocks until every service is healthy and fails if one is not.
       - name: Start stack with Docker Compose
         run: docker compose up -d --wait --wait-timeout 120 app
 
       - name: Smoke test
         run: |
-          for i in $(seq 1 30); do
-            if curl -fsS "http://127.0.0.1:18080${HEALTH_PATH}"; then
+          for i in $(seq 1 15); do
+            if curl -fsS "${HEALTH_URL}"; then
               echo; echo "App is up"; exit 0
             fi
             sleep 2
           done
           echo "App did not become healthy"; exit 1
 
-      - name: Show compose logs on failure
+      - name: Show diagnostics on failure
         if: failure()
-        run: docker compose logs --no-color
+        run: |
+          echo "::group::docker compose ps"
+          docker compose ps -a
+          echo "::endgroup::"
+
+          echo "::group::app healthcheck log"
+          CID="$(docker compose ps -q app || true)"
+          if [ -n "$CID" ]; then
+            docker inspect --format '{{json .State.Health}}' "$CID" | jq
+          fi
+          echo "::endgroup::"
+
+          echo "::group::compose logs"
+          docker compose logs --no-color
+          echo "::endgroup::"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push to Docker Hub
         run: |

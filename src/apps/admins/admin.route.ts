@@ -8,10 +8,11 @@ import {
   userIdParamSchema,
 } from '../users/user.schema';
 import { validateRequest } from '@/middlewares/validate.middleware';
+import { rateLimit, rateLimitPolicies } from '@/middlewares/rate-limit.middleware';
 
 export const adminRouter = Router();
 
-adminRouter.use(authenticate, requireRole(Role.ADMIN));
+adminRouter.use(authenticate, requireRole(Role.ADMIN), rateLimit(rateLimitPolicies.admin));
 
 adminRouter.get(
   '/users',

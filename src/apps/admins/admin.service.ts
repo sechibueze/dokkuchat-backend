@@ -33,6 +33,8 @@ export const adminService = {
     if (!(await userRepository.getUserById(userId))) throw new NotFoundError('User not found');
 
     const updated = await userRepository.updateUser(userId, input);
+
+    await userService.invalidateUserCache(userId);
     logger.info('User updated by admin', {
       userId,
       updatedBy: actor.id,

@@ -21,6 +21,9 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(30),
   FRONTEND_URL: z.url().default('http://localhost:3000'),
+
+  REDIS_URL: z.url(),
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
 });
 
 export type Env = z.infer<typeof envSchema>;

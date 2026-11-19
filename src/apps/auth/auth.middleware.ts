@@ -1,8 +1,8 @@
 import type { RequestHandler } from 'express';
 import { UnauthorizedError, ForbiddenError } from '@/libs/errors';
 import { tokenService } from './token.service';
-import { userRepository } from '@/apps/users/user.repository';
 import { Role } from '@/database/generated/prisma/browser';
+import { userService } from '../users/user.service';
 
 export const authenticate: RequestHandler = async (req, _res, next) => {
   const [scheme, token] = req.header('authorization')?.split(' ') ?? [];
@@ -11,10 +11,10 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
   }
 
   const { userId } = await tokenService.verifyAccessToken(token);
-  const user = await userRepository.getUserById(userId);
+  const user = await userService.getAuthenticatedUser(userId);
   if (!user) throw new UnauthorizedError('Account no longer exists');
 
-  req.user = { id: user.id, name: user.name, email: user.email, role: user.role, tier: user.tier };
+  req.user = user;
 
   next();
 };

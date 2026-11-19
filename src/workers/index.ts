@@ -5,6 +5,7 @@ import { createWorker } from '@/services/queue/worker';
 import { maintenanceWorker } from './maintenance.worker';
 import { onShutdown } from '@/utils/shutdown';
 import { logger } from '@/libs/logger';
+import { documentIngestionWorker } from '@/apps/documents/ingestion/ingestion.worker';
 
 async function scheduleMaintenanceJobs() {
   await getQueue(QueueName.Maintenance).upsertJobScheduler(
@@ -18,7 +19,11 @@ async function scheduleMaintenanceJobs() {
 }
 
 export function setupWorkers() {
-  const workers = [createWorker(notificationWorker), createWorker(maintenanceWorker)];
+  const workers = [
+    createWorker(documentIngestionWorker),
+    createWorker(notificationWorker),
+    createWorker(maintenanceWorker),
+  ];
 
   onShutdown('workers', async () => {
     await Promise.all(workers.map((worker) => worker.close()));

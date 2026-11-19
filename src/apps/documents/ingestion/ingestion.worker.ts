@@ -4,7 +4,7 @@ import { DocumentStatus, type Prisma } from '@/database/generated/prisma/client'
 import { documentRepository } from '../document.repository';
 import { documentChunkRepository } from '../document-chunk.repository';
 import { fileStorage } from '@/services/storage/storage.factory';
-import { embeddingService } from '@/services/embedding.service';
+import { embeddingService } from '@/apps/ai/embeddings/embedding.service';
 import { logger } from '@/libs/logger';
 import { enqueueJob } from '@/services/queue';
 import { invalidateDocumentCaches } from '../document.cache';

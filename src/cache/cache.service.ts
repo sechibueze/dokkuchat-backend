@@ -82,7 +82,7 @@ export const Cache = {
 
     const load = (async () => {
       const value = await loader();
-      if (value !== undefined) await cache.set(key, value, options);
+      if (value !== undefined) await Cache.set(key, value, options);
       return value;
     })().finally(() => inflight.delete(key));
 

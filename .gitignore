@@ -3,3 +3,4 @@ dist
 .env*
 src/database/generated
 coverage
+.storage/

@@ -66,7 +66,7 @@ export const documentService = {
       const checksum = computeChecksum(file.buffer);
       if (seenChecksums.has(checksum)) continue;
       seenChecksums.add(checksum);
-
+      // #TODO: Consider using a transaction to avoid race conditions where two requests upload the same file at the same time.
       const existing = await documentRepository.getDocumentByChecksum(user.id, checksum);
       if (existing) {
         duplicates.push(existing);

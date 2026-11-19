@@ -8,6 +8,16 @@ export interface PendingChunk {
   content: string;
 }
 
+export interface SimilarChunk {
+  chunkId: string;
+  documentId: string;
+  documentName: string;
+  chunkIndex: number;
+  pageNumber: number | null;
+  content: string;
+  similarity: number;
+}
+
 export const documentChunkRepository = {
   /** Idempotent: a retried ingestion replaces whatever a failed attempt left behind. */
   async replaceChunks(
@@ -57,5 +67,35 @@ export const documentChunkRepository = {
 
   deleteChunksForDocument(documentId: string, tx: Tx = db) {
     return tx.documentChunk.deleteMany({ where: { documentId } });
+  },
+
+  searchSimilarChunks(
+    params: {
+      userId: string;
+      embedding: number[];
+      embeddingModel: string;
+      limit: number;
+      documentIds?: string[];
+    },
+    tx: Tx = db,
+  ) {
+    const vector = toPgVector(params.embedding);
+    const scope = params.documentIds?.length
+      ? Prisma.sql`AND c."documentId" = ANY(${params.documentIds}::uuid[])`
+      : Prisma.empty;
+
+    return tx.$queryRaw<SimilarChunk[]>(Prisma.sql`
+    SELECT c.id AS "chunkId", c."documentId", d."originalName" AS "documentName",
+           c."chunkIndex", c."pageNumber", c.content,
+           1 - (c.embedding <=> ${vector}::vector) AS similarity
+    FROM document_chunks c
+    JOIN documents d ON d.id = c."documentId"
+    WHERE c."userId" = ${params.userId}::uuid
+      AND c."embeddingModel" = ${params.embeddingModel}
+      AND c.embedding IS NOT NULL
+      AND c."deletedAt" IS NULL AND d."deletedAt" IS NULL
+      ${scope}
+    ORDER BY c.embedding <=> ${vector}::vector
+    LIMIT ${params.limit}`);
   },
 };

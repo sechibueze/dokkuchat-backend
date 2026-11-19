@@ -1,4 +1,8 @@
 import { db } from '@/database';
+import { redis } from '@/libs/redis.lib';
+import { getQueue } from '@/services/queue';
+import { QueueName } from '@/services/queue/job.payload';
+import { fileStorage } from '@/services/storage/storage.factory';
 
 type CheckFn = () => Promise<void>;
 
@@ -17,6 +21,17 @@ export function registerHealthCheck(name: string, fn: CheckFn) {
 
 registerHealthCheck('database', async () => {
   await db.$queryRaw`SELECT 1`;
+});
+
+registerHealthCheck('redis', async () => {
+  await redis.ping();
+});
+registerHealthCheck('queues', async () => {
+  await getQueue(QueueName.DocumentIngestion).getJobCounts('waiting');
+});
+registerHealthCheck('storage', async () => {
+  // validates credentials and bucket without writing
+  await fileStorage.fileExists('healthcheck/.probe');
 });
 
 function withTimeout(promise: Promise<void>, ms: number) {

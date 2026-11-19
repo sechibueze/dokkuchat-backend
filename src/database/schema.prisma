@@ -29,6 +29,28 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  accessTokens AccessToken[]
+
   @@index([email], name: "idx_user_email")
   @@map("users")
+}
+
+model AccessToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  type      String    
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("access_tokens")
 }

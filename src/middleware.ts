@@ -1,6 +1,12 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { logger } from '@/libs/logger';
-import { HttpError, InternalServerError, NotFoundError } from './libs/errors';
+import {
+  BadRequestError,
+  HttpError,
+  InternalServerError,
+  NotFoundError,
+  PayloadTooLargeError,
+} from './libs/errors';
 import { env } from './config/env';
 export const requestLogger: RequestHandler = (req, res, next) => {
   const start = process.hrtime.bigint();
@@ -18,6 +24,13 @@ export const requestLogger: RequestHandler = (req, res, next) => {
 
 function toHttpError(err: unknown): HttpError {
   if (err instanceof HttpError) return err;
+
+  if ((err as { name?: string })?.name === 'MulterError') {
+    const multerError = err as { code: string; message: string };
+    return multerError.code === 'LIMIT_FILE_SIZE'
+      ? new PayloadTooLargeError('File is too large (limit 20 MB)')
+      : new BadRequestError(multerError.message);
+  }
 
   const status = (err as { status?: unknown })?.status;
   if (typeof status === 'number' && status >= 400 && status < 500) {
@@ -54,8 +67,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     errors: {
       code: httpError.code,
       message: expose ? httpError.message : 'Internal server error',
-      ...(expose &&
-        httpError.details !== undefined && { details: httpError.details }),
+      ...(expose && httpError.details !== undefined && { details: httpError.details }),
     },
   });
 };

@@ -28,10 +28,7 @@ export class UnauthorizedError extends HttpError {
 }
 
 export class ForbiddenError extends HttpError {
-  constructor(
-    message = 'You do not have permission to perform this action',
-    details?: unknown,
-  ) {
+  constructor(message = 'You do not have permission to perform this action', details?: unknown) {
     super(message, 403, 'FORBIDDEN', details);
   }
 }
@@ -72,5 +69,29 @@ export class InternalServerError extends HttpError {
 export class ServiceUnavailableError extends HttpError {
   constructor(message = 'Service unavailable', details?: unknown) {
     super(message, 503, 'SERVICE_UNAVAILABLE', details);
+  }
+}
+
+export class UpstreamError extends HttpError {
+  constructor(message = 'Upstream service error', details?: unknown, cause?: unknown) {
+    super(message, 502, 'UPSTREAM_ERROR', details, { cause });
+  }
+}
+
+export class UnsupportedMediaTypeError extends HttpError {
+  constructor(message = 'Unsupported file type', details?: unknown) {
+    super(message, 415, 'UNSUPPORTED_MEDIA_TYPE', details);
+  }
+}
+
+export class PayloadTooLargeError extends HttpError {
+  constructor(message = 'Payload too large', details?: unknown) {
+    super(message, 413, 'PAYLOAD_TOO_LARGE', details);
+  }
+}
+
+export class QuotaExceededError extends HttpError {
+  constructor(message = 'Quota exceeded', details?: unknown) {
+    super(message, 403, 'QUOTA_EXCEEDED', details);
   }
 }

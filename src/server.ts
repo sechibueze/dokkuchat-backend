@@ -2,6 +2,11 @@ import { createApp } from './app';
 import { env } from '@/config/env';
 import { logger } from '@/libs/logger';
 import { db } from '@/database';
+import { setupWorkers } from './workers';
+import { registerAppEventListeners } from './events/listener';
+
+registerAppEventListeners();
+if (env.RUN_WORKERS) setupWorkers();
 const app = createApp();
 const server = app.listen(env.PORT, '0.0.0.0', () => {
   logger.info(`API listening on port ${env.PORT}`, { env: env.NODE_ENV });
@@ -24,6 +29,4 @@ async function shutdown(signal: string) {
 
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
-process.on('unhandledRejection', (reason) =>
-  logger.error('Unhandled rejection', { reason }),
-);
+process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection', { reason }));

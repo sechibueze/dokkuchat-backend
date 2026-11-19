@@ -20,7 +20,7 @@ jobs:
 
     env:
       IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dokkuchat
-      HEALTH_URL: http://127.0.0.1:18080/api/v1/health
+      HEALTH_URL: http://127.0.0.1:18080/api/v1/health/live
 
     steps:
       - uses: actions/checkout@v4

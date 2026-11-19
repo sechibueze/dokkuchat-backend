@@ -30,6 +30,8 @@ model User {
   deletedAt DateTime?
 
   accessTokens AccessToken[]
+  documents    Document[]
+  usageLogs   UsageLog[]
 
   @@index([email], name: "idx_user_email")
   @@map("users")
@@ -53,4 +55,95 @@ model AccessToken {
   @@index([userId])
   @@index([type])
   @@map("access_tokens")
+}
+
+// Document model for storing file metadata
+enum DocumentKind {
+  PDF
+  TEXT
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  EMBEDDING
+  READY
+  FAILED
+}
+
+model Document {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  originalName    String
+  kind            DocumentKind
+  mimeType        String
+  sizeBytes       Int
+  checksum        String
+  storageProvider String
+  storageKey      String
+  status          DocumentStatus @default(UPLOADED)
+  failureReason   String?
+  pageCount       Int?
+  chunkCount      Int            @default(0)
+  processedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks DocumentChunk[]
+
+  @@unique([userId, checksum])
+  @@index([userId, status])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id             String                      @id @default(uuid()) @db.Uuid
+  documentId     String                      @db.Uuid
+  userId         String                      @db.Uuid
+  chunkIndex     Int
+  content        String
+  characterCount Int
+  pageNumber     Int?
+  embedding      Unsupported("vector(1536)")?
+  embeddingModel String?
+  embeddingProvider String?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  deletedAt      DateTime?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([userId])
+  @@map("document_chunks")
+}
+
+enum UsageKind {
+  EMBEDDING
+  CHAT_COMPLETION
+}
+
+model UsageLog {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  kind             UsageKind
+  provider         String
+  model            String
+  promptTokens     Int
+  completionTokens Int       @default(0)
+  totalTokens      Int
+  costUsd          Decimal   @db.Decimal(12, 6)
+  documentId       String?   @db.Uuid
+  conversationId   String?   @db.Uuid
+  correlationId    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("usage_logs")
 }

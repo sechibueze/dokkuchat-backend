@@ -47,4 +47,11 @@ export const accessTokenRepository = {
       data: { revokedAt: new Date() },
     });
   },
+
+  async deleteExpiredTokens(cutoff: Date, tx: Tx = db) {
+    const { count } = await tx.accessToken.deleteMany({
+      where: { OR: [{ expiresAt: { lt: cutoff } }, { revokedAt: { lt: cutoff } }] },
+    });
+    return count;
+  },
 };

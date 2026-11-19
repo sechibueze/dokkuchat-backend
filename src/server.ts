@@ -4,6 +4,7 @@ import { logger } from '@/libs/logger';
 import { db } from '@/database';
 import { setupWorkers } from './workers';
 import { registerAppEventListeners } from './events/listener';
+import { runShutdownHooks } from './utils/shutdown';
 
 registerAppEventListeners();
 if (env.RUN_WORKERS) setupWorkers();
@@ -21,6 +22,7 @@ async function shutdown(signal: string) {
   force.unref();
 
   server.close(async () => {
+    await runShutdownHooks();
     await db.$disconnect();
     logger.info('Shutdown complete');
     process.exit(0);

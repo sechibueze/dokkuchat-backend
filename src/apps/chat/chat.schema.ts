@@ -9,7 +9,11 @@ export const createConversationSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
-  content: z.string().trim().min(1).max(MAX_QUESTION_CHARS),
+  content: z
+    .string({ error: 'A chat message is required' })
+    .trim()
+    .min(1, 'Enter a message')
+    .max(MAX_QUESTION_CHARS),
 });
 
 export const listQuerySchema = z.object({

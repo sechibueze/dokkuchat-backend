@@ -7,6 +7,7 @@ import { usageService } from '../usage/usage.service';
 import { getEmbeddingProvider } from './embedding.factory';
 import { cachePolicies } from '@/cache/cache.policies';
 import { Cache } from '@/cache/cache.service';
+import { logger } from '@/libs/logger';
 
 export const embeddingService = {
   /** Stored on each chunk.
@@ -29,7 +30,13 @@ export const embeddingService = {
     );
 
     const cached = await Cache.get<number[]>(key);
-    if (cached) return cached; // a cache hit costs nothing, so nothing is billed
+    if (cached) {
+      logger.info('cached text embeddings', {
+        embeddings: cached.length,
+        content: text,
+      });
+      return cached; // a cache hit costs nothing, so nothing is billed
+    }
 
     const { vectors, tokensUsed } = await provider.embedTexts([text]);
     await usageService.recordUsage({

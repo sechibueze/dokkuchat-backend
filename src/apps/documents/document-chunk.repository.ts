@@ -91,7 +91,7 @@ export const documentChunkRepository = {
     FROM document_chunks c
     JOIN documents d ON d.id = c."documentId"
     WHERE c."userId" = ${params.userId}::uuid
-      AND c."embeddingModel" = ${params.embeddingModel}
+      
       AND c.embedding IS NOT NULL
       AND c."deletedAt" IS NULL AND d."deletedAt" IS NULL
       ${scope}

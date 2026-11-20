@@ -3,7 +3,10 @@ import type { Message, MessageRole } from '@/database/generated/prisma/client';
 import { embeddingService } from '../ai/embeddings/embedding.service';
 import { getLlmProvider } from '../ai/llm/llm.factory';
 import { usageService } from '../ai/usage/usage.service';
-import { documentChunkRepository, type SimilarChunk } from '../document/document-chunk.repository';
+import {
+  documentChunkRepository,
+  type SimilarChunk,
+} from '@/apps/documents/document-chunk.repository';
 import { documentRepository } from '@/apps/documents/document.repository';
 import {
   DEFAULT_CONVERSATION_TITLE,
@@ -139,6 +142,10 @@ export const chatService = {
       userId: user.id,
       conversationId,
     });
+
+    logger.info('chat embeddings ', {
+      size: embedding.length,
+    });
     const candidates = await documentChunkRepository.searchSimilarChunks({
       userId: user.id,
       embedding,
@@ -148,6 +155,9 @@ export const chatService = {
     });
     const relevant = candidates.filter((chunk) => chunk.similarity >= MIN_SIMILARITY);
 
+    logger.info('Found relevant chunks', {
+      chunkSize: relevant.length,
+    });
     let answer = NO_ANSWER_MESSAGE;
     let model: string | undefined;
     let usage = { promptTokens: 0, completionTokens: 0 };

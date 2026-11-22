@@ -43,15 +43,17 @@ export const userService = {
     const cached = await Cache.get<AuthenticatedUser>(policy.key(userId));
     if (cached) return cached;
 
-    const user = await userRepository.getUserById(userId);
+    const user = await userRepository.getUserForAuthentication(userId);
     if (!user) return null;
 
-    const authenticated = {
+    const authenticated: AuthenticatedUser = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
       tier: user.tier,
+      role: user.role.name,
+      roleId: user.roleId,
+      permissions: user.role.permissions.map((p) => p.permission.key),
     };
     await Cache.set(policy.key(userId), authenticated, {
       ttlSeconds: policy.ttlSeconds,

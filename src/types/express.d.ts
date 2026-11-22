@@ -6,6 +6,7 @@ export interface AuthenticatedUser {
   email: string;
   role: Role;
   tier: Tier;
+  permissions: string[];
 }
 
 declare global {

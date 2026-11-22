@@ -4,7 +4,10 @@ export const cachePolicies = {
   authenticatedUser: {
     ttlSeconds: 60,
     key: (userId: string) => `user:${userId}`,
-    tags: (userId: string) => [`user:${userId}`],
+    tags: (userId: string, roleId?: string) => [
+      `user:${userId}`,
+      ...(roleId ? [`role:${roleId}`] : []),
+    ],
   },
   documentList: {
     ttlSeconds: 120,

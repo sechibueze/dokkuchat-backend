@@ -8,7 +8,8 @@ import { userService } from '../users/user.service';
 
 export const adminService = {
   async listUsers(query: ListUsersQuery) {
-    const { items, total } = await userRepository.listUsers(query);
+    const { role, ...filter } = query;
+    const { items, total } = await userRepository.listUsers({ ...filter, roleName: role });
     return {
       users: items.map(toAdminUserView),
       meta: {
@@ -20,20 +21,24 @@ export const adminService = {
     };
   },
 
-  async getUser(userId: string) {
-    const user = await userRepository.getUserById(userId, { includeDeleted: true });
-    if (!user) throw new NotFoundError('User not found');
-    return toAdminUserView(user);
-  },
-
   async updateUser(actor: AuthenticatedUser, userId: string, input: AdminUpdateUserInput) {
-    if (actor.id === userId && input.role && input.role !== actor.role) {
+    const { role: roleName, ...fields } = input;
+    if (actor.id === userId && roleName && roleName !== actor.role) {
       throw new ForbiddenError('You cannot change your own role');
     }
     if (!(await userRepository.getUserById(userId))) throw new NotFoundError('User not found');
 
-    const updated = await userRepository.updateUser(userId, input);
+    let roleId: string | undefined;
+    if (roleName) {
+      const role = await rbacRepository.getRoleByName(roleName);
+      if (!role) throw new BadRequestError(`Unknown role "${roleName}"`);
+      roleId = role.id;
+    }
 
+    const updated = await userRepository.updateUser(userId, {
+      ...fields,
+      ...(roleId && { roleId }),
+    });
     await userService.invalidateUserCache(userId);
     logger.info('User updated by admin', {
       userId,
@@ -41,6 +46,12 @@ export const adminService = {
       fields: Object.keys(input),
     });
     return toAdminUserView(updated);
+  },
+
+  async getUser(userId: string) {
+    const user = await userRepository.getUserById(userId, { includeDeleted: true });
+    if (!user) throw new NotFoundError('User not found');
+    return toAdminUserView(user);
   },
 
   async softDeleteUser(actor: AuthenticatedUser, userId: string) {

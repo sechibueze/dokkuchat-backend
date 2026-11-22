@@ -4,6 +4,7 @@ import { authRouter } from '@/apps/auth/auth.route';
 import { chatRouter } from '@/apps/chat/chat.route';
 import { documentRouter } from '@/apps/documents/document.route';
 import { healthRouter } from '@/apps/health/health.route';
+import { rbacRouter } from '@/apps/rbac/rbac.route';
 import { userRouter } from '@/apps/users/user.route';
 import { Router } from 'express';
 
@@ -17,4 +18,5 @@ v1.use('/admins', adminRouter);
 v1.use('/ai', aiRouter);
 v1.use('/documents', documentRouter);
 v1.use('/conversations', chatRouter);
+v1.use('/rbac', rbacRouter);
 v1.use('/health', healthRouter);

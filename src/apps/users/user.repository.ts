@@ -1,35 +1,39 @@
 import { db, type Tx } from '@/database';
 import type { Prisma, Role, Tier } from '@/database/generated/prisma/client';
+import { SystemRole } from '../rbac/rbac.catalog';
 
 export interface CreateUserData {
   name: string;
   email: string;
   password: string;
-  role?: Role;
   tier?: Tier;
+  roleName?: string;
 }
-
 export interface UpdateUserData {
   name?: string;
   password?: string;
-  role?: Role;
   tier?: Tier;
+  roleId?: string;
 }
-
 export interface ListUsersFilter {
   page: number;
   limit: number;
   search?: string;
-  role?: Role;
+  roleName?: string;
   tier?: Tier;
   includeDeleted?: boolean;
 }
 
+export type UserWithRole = Prisma.UserGetPayload<{ include: typeof withRole }>;
+const withRole = { role: true } as const;
 const excludeSoftDeleted = { deletedAt: null } as const;
 
 export const userRepository = {
-  createUser(data: CreateUserData, tx: Tx = db) {
-    return tx.user.create({ data });
+  createUser({ roleName = SystemRole.User, ...data }: CreateUserData, tx: Tx = db) {
+    return tx.user.create({
+      data: { ...data, role: { connect: { name: roleName } } },
+      include: withRole,
+    });
   },
 
   getUserById(id: string, options: { includeDeleted?: boolean } = {}, tx: Tx = db) {
@@ -67,10 +71,10 @@ export const userRepository = {
   },
 
   async listUsers(filter: ListUsersFilter, tx: Tx = db) {
-    const { page, limit, search, role, tier, includeDeleted } = filter;
+    const { page, limit, search, roleName, tier, includeDeleted } = filter;
     const where: Prisma.UserWhereInput = {
       ...(includeDeleted ? {} : excludeSoftDeleted),
-      ...(role && { role }),
+      ...(roleName && { role: { name: roleName } }),
       ...(tier && { tier }),
       ...(search && {
         OR: [
@@ -90,5 +94,21 @@ export const userRepository = {
       tx.user.count({ where }),
     ]);
     return { items, total };
+  },
+
+  getUserForAuthentication(id: string, tx: Tx = db) {
+    return tx.user.findFirst({
+      where: { id, ...excludeSoftDeleted },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              where: { deletedAt: null },
+              select: { permission: { select: { key: true } } },
+            },
+          },
+        },
+      },
+    });
   },
 };

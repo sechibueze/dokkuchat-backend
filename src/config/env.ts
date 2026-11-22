@@ -42,9 +42,18 @@ const envSchema = z
     OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
     OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
     OPENAI_CHAT_MODEL: z.string().default('gpt-4o-mini'),
+
+    // Ollama configs
     OLLAMA_BASE_URL: z.url().default('http://localhost:11434'),
     OLLAMA_EMBEDDING_MODEL: z.string().default('nomic-embed-text'),
     OLLAMA_CHAT_MODEL: z.string().default('tinyllama:1.1b'),
+
+    // Observability
+    ENABLE_METRICS: z.stringbool().default(true),
+    METRICS_TOKEN: z.string().min(16).optional(),
+
+    // Documentation
+    ENABLE_API_DOCS: z.stringbool().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.STORAGE_PROVIDER === 'local') return;

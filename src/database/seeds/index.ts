@@ -2,8 +2,10 @@
 import 'dotenv/config';
 import { db } from '@/database';
 import { passwordService } from '@/apps/auth/password.service';
-import { Role, Tier } from '@/database/generated/prisma/enums';
+import { Tier } from '@/database/generated/prisma/enums';
 import { userRepository } from '@/apps/users/user.repository';
+import { syncRbac } from '@/apps/rbac/rbac.sync';
+import { SystemRole } from '@/apps/rbac/rbac.catalog';
 async function seedAdminUser() {
   const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
@@ -20,13 +22,14 @@ async function seedAdminUser() {
     name: 'Platform Admin',
     email,
     password: await passwordService.hash(password),
-    role: Role.ADMIN,
+    roleName: SystemRole.Admin,
     tier: Tier.ENTERPRISE,
   });
   console.log(`Admin user created: ${email}`);
 }
 
-seedAdminUser()
+syncRbac()
+  .then(seedAdminUser)
   .then(() => db.$disconnect())
   .catch(async (err) => {
     console.error(err);

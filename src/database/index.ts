@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from './generated/prisma/client';
+import { appEvents } from '@/events';
 
 export const db = new PrismaClient({
   adapter: new PrismaPg({
@@ -8,6 +9,8 @@ export const db = new PrismaClient({
     max: 20,
   }),
   transactionOptions: { maxWait: 30_000, timeout: 60_000 },
+  log: [{ emit: 'event', level: 'query' }],
 });
 
 export type Tx = Prisma.TransactionClient;
+db.$on('query', (event) => appEvents.emit('db.query', { durationMs: event.duration }));

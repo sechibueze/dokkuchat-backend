@@ -2,7 +2,7 @@ name: DokkuChat CI
 
 on:
   push:
-    branches: [development]
+    branches: [developmentx]
   workflow_dispatch: # re-run the build/deploy by hand from the Actions tab
 
 permissions:

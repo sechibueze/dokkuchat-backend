@@ -26,3 +26,16 @@ export const requireRole =
     if (!allowedRoles.includes(req.user.role)) throw new ForbiddenError();
     next();
   };
+
+export const requirePermission =
+  (...required: string[]): RequestHandler =>
+  (req, _res, next) => {
+    if (!req.user) throw new UnauthorizedError();
+    const missing = required.filter((permission) => !req.user!.permissions.includes(permission));
+    if (missing.length > 0) {
+      throw new ForbiddenError('You do not have permission to perform this action', {
+        required: missing,
+      });
+    }
+    next();
+  };

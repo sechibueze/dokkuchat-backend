@@ -5,8 +5,10 @@ import { db } from '@/database';
 import { setupWorkers } from './workers';
 import { registerAppEventListeners } from './events/listener';
 import { runShutdownHooks } from './utils/shutdown';
+import { registerMetricListeners } from './observability/metric-listener';
 
 registerAppEventListeners();
+registerMetricListeners();
 if (env.RUN_WORKERS) setupWorkers();
 const app = createApp();
 const server = app.listen(env.PORT, '0.0.0.0', () => {

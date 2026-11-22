@@ -26,6 +26,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1172.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@prometheus-io/client": "^0.16.1",
     "argon2": "^0.45.2",
     "axios": "^1.21.1",
     "bullmq": "^6.7.8",

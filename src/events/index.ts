@@ -46,6 +46,24 @@ export interface UsageRecordedEvent {
   costUsd: number;
 }
 
+export interface AuthEvent {
+  event:
+    | 'registered'
+    | 'login_succeeded'
+    | 'login_failed'
+    | 'token_refreshed'
+    | 'token_reuse_detected'
+    | 'password_reset_requested'
+    | 'password_reset_completed';
+}
+
+export interface ToolCallEvent {
+  server: string;
+  tool: string;
+  outcome: 'success' | 'error';
+  durationMs: number;
+}
+
 export interface AppEventMap {
   'http.request.completed': [HttpRequestEvent];
   'circuit.state.changed': [CircuitStateEvent];
@@ -54,6 +72,14 @@ export interface AppEventMap {
   'document.ready': [DocumentLifecycleEvent];
   'document.failed': [DocumentLifecycleEvent];
   'usage.recorded': [UsageRecordedEvent];
+
+  'auth.event': [AuthEvent];
+  'cache.access': [{ result: 'hit' | 'miss' | 'error' }];
+  'rate_limit.rejected': [{ policy: string }];
+  'db.query': [{ durationMs: number }];
+  'retrieval.completed': [{ answered: boolean; sources: number }];
+  'tool.approval.changed': [{ status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' }];
+  'tool.call.completed': [ToolCallEvent];
 }
 
 export class AppEvents extends EventEmitter<AppEventMap> {}

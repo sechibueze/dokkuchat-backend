@@ -51,6 +51,9 @@ const envSchema = z
     // Observability
     ENABLE_METRICS: z.stringbool().default(true),
     METRICS_TOKEN: z.string().min(16).optional(),
+
+    // Documentation
+    ENABLE_API_DOCS: z.stringbool().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.STORAGE_PROVIDER === 'local') return;

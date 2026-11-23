@@ -14,7 +14,17 @@ export interface OpenAiChatMessage {
 
 export interface OpenAiChatResponse {
   model: string;
-  choices: { message: { content: string | null }; finish_reason: string }[];
+  choices: {
+    message: {
+      content: string | null;
+      tool_calls?: {
+        id: string;
+        type: 'function';
+        function: { name: string; arguments: string };
+      }[];
+    };
+    finish_reason: string;
+  }[];
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
 }
 

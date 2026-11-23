@@ -14,6 +14,7 @@ import { UnauthorizedError, ConflictError, BadRequestError } from '@/libs/errors
 import { toPublicUser } from '@/apps/users/user.mapper';
 import type { User } from '@/database/generated/prisma/client';
 import { accessTokenRepository } from './access-token.repository';
+import { rbacRepository } from '../rbac/rbac.repository';
 export interface ClientContext {
   userAgent?: string;
   ipAddress?: string;
@@ -72,8 +73,14 @@ export const authService = {
 
     try {
       const { user, auth } = await db.$transaction(async (tx) => {
+        const userRole = await rbacRepository.getDefaultRole();
         const created = await userRepository.createUser(
-          { name: input.name, email: input.email, password: passwordHash },
+          {
+            name: input.name,
+            email: input.email,
+            password: passwordHash,
+            roleName: userRole?.name,
+          },
           tx,
         );
 

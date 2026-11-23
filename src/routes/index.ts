@@ -1,11 +1,14 @@
 import { adminRouter } from '@/apps/admins/admin.route';
 import { aiRouter } from '@/apps/ai/ai.route';
+import { approvalRouter, toolRouter } from '@/apps/approvals/approval.route';
 import { authRouter } from '@/apps/auth/auth.route';
 import { chatRouter } from '@/apps/chat/chat.route';
 import { documentRouter } from '@/apps/documents/document.route';
 import { healthRouter } from '@/apps/health/health.route';
+import { mcpRouter } from '@/apps/mcp/mcp.route';
 import { rbacRouter } from '@/apps/rbac/rbac.route';
 import { userRouter } from '@/apps/users/user.route';
+import { env } from '@/config/env';
 import { Router } from 'express';
 
 export const routes = Router();
@@ -20,3 +23,7 @@ v1.use('/documents', documentRouter);
 v1.use('/conversations', chatRouter);
 v1.use('/rbac', rbacRouter);
 v1.use('/health', healthRouter);
+
+v1.use('/approvals', approvalRouter);
+v1.use('/tools', toolRouter);
+if (env.MCP_SERVER_ENABLED) routes.use('/mcp', mcpRouter);

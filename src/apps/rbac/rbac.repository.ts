@@ -11,6 +11,9 @@ export const rbacRepository = {
   getRoleById(id: string, tx: Tx = db) {
     return tx.role.findUnique({ where: { id }, include: withPermissions });
   },
+  getDefaultRole(tx: Tx = db) {
+    return tx.role.findFirst({ where: { isDefault: true }, include: withPermissions });
+  },
   getRoleByName(name: string, tx: Tx = db) {
     return tx.role.findUnique({ where: { name }, include: withPermissions });
   },

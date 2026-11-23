@@ -35,6 +35,9 @@ export const rateLimitPolicies = {
     keyBy: 'user',
   },
   admin: { name: 'admin', points: 120, durationSeconds: 60, keyBy: 'user' },
+
+  approval: { name: 'approval', points: 60, durationSeconds: 60, keyBy: 'user' },
+  mcp: { name: 'mcp', points: 120, durationSeconds: 60, keyBy: 'user' },
 } satisfies Record<string, RateLimitPolicy>;
 
 const limiters = new Map<string, RateLimiterRedis>();

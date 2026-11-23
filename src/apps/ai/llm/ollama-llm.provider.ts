@@ -4,6 +4,7 @@ import type { LlmProvider, LlmRequest, LlmResponse } from './llm.provider';
 
 export class OllamaLlmProvider implements LlmProvider {
   readonly name = 'ollama';
+  readonly supportsTools = false;
 
   constructor(
     private readonly client: OllamaClient,
@@ -13,7 +14,7 @@ export class OllamaLlmProvider implements LlmProvider {
   async generate({ messages, maxOutputTokens }: LlmRequest): Promise<LlmResponse> {
     const response = await this.client.chat({
       model: this.model,
-      messages,
+      messages: messages.map((msg) => ({ role: msg.role, content: msg.content })),
       stream: false,
       options: { num_predict: maxOutputTokens },
     });
@@ -25,6 +26,7 @@ export class OllamaLlmProvider implements LlmProvider {
       model: response.model,
       promptTokens: response.prompt_eval_count ?? 0,
       completionTokens: response.eval_count ?? 0,
+      toolCalls: [],
     };
   }
 }

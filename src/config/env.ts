@@ -54,6 +54,10 @@ const envSchema = z
 
     // Documentation
     ENABLE_API_DOCS: z.stringbool().optional(),
+
+    // MCPS
+    MCP_CLIENT_SERVERS: z.string().default('[]'),
+    MCP_SERVER_ENABLED: z.stringbool().default(true),
   })
   .superRefine((value, ctx) => {
     if (value.STORAGE_PROVIDER === 'local') return;

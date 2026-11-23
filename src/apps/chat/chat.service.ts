@@ -25,36 +25,11 @@ import { cachePolicies } from '@/cache/cache.policies';
 import { BadRequestError, NotFoundError } from '@/libs/errors';
 import { AuthenticatedUser } from '@/types/express';
 import { logger } from '@/libs/logger';
-
-export interface Citation {
-  sourceNumber: number;
-  documentId: string;
-  documentName: string;
-  pageNumber: number | null;
-  chunkIndex: number;
-  similarity: number;
-  snippet: string;
-}
-
-const toCitations = (chunks: SimilarChunk[]): Citation[] =>
-  chunks.map((chunk, index) => ({
-    sourceNumber: index + 1,
-    documentId: chunk.documentId,
-    documentName: chunk.documentName,
-    pageNumber: chunk.pageNumber,
-    chunkIndex: chunk.chunkIndex,
-    similarity: Math.round(chunk.similarity * 1000) / 1000,
-    snippet: chunk.content.slice(0, 240),
-  }));
-
-const toMessageView = (message: Message) => ({
-  id: message.id,
-  role: message.role,
-  content: message.content,
-  citations: message.citations ?? [],
-  model: message.model,
-  createdAt: message.createdAt,
-});
+import { toCitations, toMessageView } from './chat.mapper';
+import { appEvents } from '@/events';
+import { mcpClientRegistry } from '../mcp/client/mcp-client.registry';
+import { Permission } from '../rbac/rbac.catalog';
+import { agentTurnService } from './agent-turn.service';
 
 const toLlmRole = (role: MessageRole) =>
   (role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant';
@@ -162,38 +137,95 @@ export const chatService = {
     let model: string | undefined;
     let usage = { promptTokens: 0, completionTokens: 0 };
 
+    // if (relevant.length > 0) {
+    //   const history = await messageRepository.getRecentMessages(conversationId, HISTORY_MESSAGES);
+    //   const llm = getLlmProvider();
+    //   const completion = await llm.generate({
+    //     messages: buildPrompt({
+    //       question,
+    //       history: history.map((message) => ({
+    //         role: toLlmRole(message.role),
+    //         content: message.content,
+    //       })),
+    //       chunks: relevant,
+    //     }),
+    //     maxOutputTokens: MAX_OUTPUT_TOKENS,
+    //   });
+
+    //   answer = completion.content;
+    //   model = completion.model;
+    //   usage = {
+    //     promptTokens: completion.promptTokens,
+    //     completionTokens: completion.completionTokens,
+    //   };
+
+    //   await usageService.recordUsage({
+    //     userId: user.id,
+    //     kind: 'CHAT_COMPLETION',
+    //     provider: llm.name,
+    //     model: completion.model,
+    //     ...usage,
+    //     conversationId,
+    //   });
+    // }
+
+    appEvents.emit('retrieval.completed', {
+      answered: relevant.length > 0,
+      sources: relevant.length,
+    });
+
     if (relevant.length > 0) {
       const history = await messageRepository.getRecentMessages(conversationId, HISTORY_MESSAGES);
       const llm = getLlmProvider();
-      const completion = await llm.generate({
-        messages: buildPrompt({
-          question,
-          history: history.map((message) => ({
-            role: toLlmRole(message.role),
-            content: message.content,
-          })),
-          chunks: relevant,
-        }),
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      const catalog =
+        user.permissions.includes(Permission.ToolsUse) && llm.supportsTools
+          ? await mcpClientRegistry.listTools()
+          : [];
+
+      const promptMessages = buildPrompt({
+        question,
+        history: history.map((m) => ({ role: toLlmRole(m.role), content: m.content })),
+        chunks: relevant,
       });
-
-      answer = completion.content;
-      model = completion.model;
-      usage = {
-        promptTokens: completion.promptTokens,
-        completionTokens: completion.completionTokens,
-      };
-
+      const completion = await llm.generate({
+        messages: promptMessages,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        tools: catalog.map((t) => ({
+          name: t.functionName,
+          description: t.description,
+          parameters: t.inputSchema,
+        })),
+      });
       await usageService.recordUsage({
         userId: user.id,
         kind: 'CHAT_COMPLETION',
         provider: llm.name,
         model: completion.model,
-        ...usage,
+        promptTokens: completion.promptTokens,
+        completionTokens: completion.completionTokens,
         conversationId,
       });
-    }
 
+      if (completion.toolCalls.length > 0) {
+        const turn = await agentTurnService.beginToolTurn({
+          user,
+          conversation,
+          question,
+          promptMessages,
+          completion,
+          catalog,
+          citations: toCitations(relevant),
+        });
+        if (turn) return turn; // waiting for approval, or already finished if every tool was allow-listed
+      }
+
+      answer = completion.content || NO_ANSWER_MESSAGE;
+      model = completion.model;
+      usage = {
+        promptTokens: completion.promptTokens,
+        completionTokens: completion.completionTokens,
+      };
+    }
     const citations = toCitations(relevant);
     const now = Date.now();
 

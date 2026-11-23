@@ -1,11 +1,13 @@
 import { db, type Tx } from '@/database';
-import type { MessageRole, Prisma } from '@/database/generated/prisma/client';
+import type { MessageRole, MessageStatus, Prisma } from '@/database/generated/prisma/client';
 
 export interface CreateMessageData {
   conversationId: string;
   role: MessageRole;
   content: string;
   createdAt: Date;
+  status?: MessageStatus;
+  agentState?: Prisma.InputJsonValue;
   citations?: Prisma.InputJsonValue;
   model?: string;
   promptTokens?: number;
@@ -38,5 +40,24 @@ export const messageRepository = {
       tx.message.count({ where }),
     ]);
     return { items, total };
+  },
+
+  getMessageById(id: string, tx: Tx = db) {
+    return tx.message.findUnique({ where: { id } });
+  },
+
+  async claimAwaitingMessage(id: string, tx: Tx = db) {
+    const { count } = await tx.message.updateMany({
+      where: { id, status: 'AWAITING_APPROVAL' },
+      data: { status: 'COMPLETED' },
+    });
+    return count === 1 ? tx.message.findUnique({ where: { id } }) : null;
+  },
+  completeMessage(
+    id: string,
+    data: { content: string; model?: string; promptTokens?: number; completionTokens?: number },
+    tx: Tx = db,
+  ) {
+    return tx.message.update({ where: { id }, data: { ...data, agentState: Prisma.DbNull } });
   },
 };

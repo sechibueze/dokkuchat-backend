@@ -8,11 +8,13 @@ export interface EmbeddingBatchResult {
   tokensUsed: number;
 }
 
+export type EmbeddingPurpose = 'document' | 'query';
+
 export interface EmbeddingProvider {
   readonly name: string;
   readonly model: string;
   /** Returns one vector per input, in the same order. */
-  embedTexts(texts: string[]): Promise<EmbeddingBatchResult>;
+  embedTexts(texts: string[], purpose?: EmbeddingPurpose): Promise<EmbeddingBatchResult>;
 }
 
 export function normalizeDimensions(
@@ -33,15 +35,21 @@ export abstract class BaseEmbeddingProvider implements EmbeddingProvider {
   abstract readonly name: string;
   abstract readonly model: string;
   protected abstract readonly maxBatchSize: number;
-  protected abstract requestEmbeddings(batch: string[]): Promise<EmbeddingBatchResult>;
+  protected abstract requestEmbeddings(
+    batch: string[],
+    purpose: EmbeddingPurpose,
+  ): Promise<EmbeddingBatchResult>;
 
-  async embedTexts(texts: string[]): Promise<EmbeddingBatchResult> {
+  async embedTexts(
+    texts: string[],
+    purpose: EmbeddingPurpose = 'document',
+  ): Promise<EmbeddingBatchResult> {
     const vectors: number[][] = [];
     let tokensUsed = 0;
 
     for (let start = 0; start < texts.length; start += this.maxBatchSize) {
       const batch = texts.slice(start, start + this.maxBatchSize);
-      const result = await this.requestEmbeddings(batch);
+      const result = await this.requestEmbeddings(batch, purpose);
       if (result.vectors.length !== batch.length) {
         throw new UpstreamError(
           `${this.name} returned ${result.vectors.length} embeddings for ${batch.length} inputs`,

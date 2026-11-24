@@ -8,7 +8,7 @@ export interface OpenAiEmbeddingResponse {
 }
 
 export interface OpenAiChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
 }
 

@@ -1,8 +1,8 @@
 import { UpstreamError } from '@/libs/errors';
-import type { OpenAiClient } from '../clients/openai.client';
+import type { OpenAiChatMessage, OpenAiClient } from '../clients/openai.client';
 import type { LlmMessage, LlmProvider, LlmRequest, LlmResponse } from './llm.provider';
 
-function toOpenAiMessage(message: LlmMessage) {
+export function toOpenAiMessage(message: LlmMessage) {
   if (message.role === 'tool')
     return { role: 'tool', tool_call_id: message.toolCallId, content: message.content };
   if (message.role === 'assistant' && message.toolCalls?.length) {
@@ -19,7 +19,7 @@ function toOpenAiMessage(message: LlmMessage) {
   return { role: message.role, content: message.content };
 }
 
-function parseArguments(raw: string): Record<string, unknown> {
+export function parseArguments(raw: string): Record<string, unknown> {
   try {
     const value = JSON.parse(raw);
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};

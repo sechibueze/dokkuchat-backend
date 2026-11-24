@@ -36,17 +36,9 @@ const envSchema = z
     STORAGE_SECRET_ACCESS_KEY: z.string().optional(),
 
     // LLM configuration
-    EMBEDDING_PROVIDER: z.enum(['openai', 'ollama']).default('ollama'),
-    LLM_PROVIDER: z.enum(['openai', 'ollama']).default('ollama'),
-    OPENAI_API_KEY: z.string().optional(),
-    OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
-    OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
-    OPENAI_CHAT_MODEL: z.string().default('gpt-4o-mini'),
-
-    // Ollama configs
-    OLLAMA_BASE_URL: z.url().default('http://localhost:11434'),
-    OLLAMA_EMBEDDING_MODEL: z.string().default('nomic-embed-text'),
-    OLLAMA_CHAT_MODEL: z.string().default('tinyllama:1.1b'),
+    EMBEDDING_PROVIDER: z
+      .enum(['ollama', 'openai', 'voyage', 'cohere', 'gemini', 'jina'])
+      .default('gemini'),
 
     // Observability
     ENABLE_METRICS: z.stringbool().default(true),
@@ -58,6 +50,53 @@ const envSchema = z
     // MCPS
     MCP_CLIENT_SERVERS: z.string().default('[]'),
     MCP_SERVER_ENABLED: z.stringbool().default(true),
+
+    VOYAGE_API_KEY: z.string().optional(),
+    VOYAGE_BASE_URL: z.string().url().default('https://api.voyageai.com/v1'),
+    VOYAGE_EMBEDDING_MODEL: z.string().default('voyage-3.5'),
+
+    COHERE_API_KEY: z.string().optional(),
+    COHERE_BASE_URL: z.string().url().default('https://api.cohere.com/v2'),
+    COHERE_EMBEDDING_MODEL: z.string().default('embed-v4.0'),
+
+    GEMINI_API_KEY: z.string().optional(),
+    GEMINI_BASE_URL: z.string().url().default('https://generativelanguage.googleapis.com/v1beta'),
+    GEMINI_EMBEDDING_MODEL: z.string().default('gemini-embedding-001'),
+
+    JINA_API_KEY: z.string().optional(),
+    JINA_BASE_URL: z.string().url().default('https://api.jina.ai/v1'),
+    JINA_EMBEDDING_MODEL: z.string().default('jina-embeddings-v3'),
+
+    // LLM Providers
+    LLM_PROVIDER: z
+      .enum(['ollama', 'openai', 'groq', 'openrouter', 'cloudflare', 'gemini'])
+      .default('gemini'),
+
+    OPENAI_API_KEY: z.string().optional(),
+    OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
+    OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+    OPENAI_CHAT_MODEL: z.string().default('gpt-4o-mini'),
+
+    // Ollama configs
+    OLLAMA_BASE_URL: z.url().default('http://localhost:11434'),
+    OLLAMA_EMBEDDING_MODEL: z.string().default('nomic-embed-text'),
+    OLLAMA_CHAT_MODEL: z.string().default('tinyllama:1.1b'),
+
+    GROQ_API_KEY: z.string().optional(),
+    GROQ_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1'),
+    GROQ_CHAT_MODEL: z.string().default('llama-3.3-70b-versatile'),
+
+    OPENROUTER_API_KEY: z.string().optional(),
+    OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+    OPENROUTER_CHAT_MODEL: z.string().default('meta-llama/llama-3.3-70b-instruct:free'),
+    OPENROUTER_SITE_URL: z.string().url().optional(),
+    OPENROUTER_APP_NAME: z.string().optional(),
+
+    CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+    CLOUDFLARE_API_TOKEN: z.string().optional(),
+    CLOUDFLARE_CHAT_MODEL: z.string().default('@cf/meta/llama-3.3-70b-instruct-fp8-fast'),
+
+    GEMINI_CHAT_MODEL: z.string().default('gemini-2.5-flash'),
   })
   .superRefine((value, ctx) => {
     if (value.STORAGE_PROVIDER === 'local') return;

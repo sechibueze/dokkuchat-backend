@@ -108,14 +108,19 @@ export const chatService = {
   },
 
   async askQuestion(user: AuthenticatedUser, conversationId: string, question: string) {
-    const conversation = await conversationRepository.getConversationById(conversationId, user.id);
+    const conversation = conversationId
+      ? await conversationRepository.getConversationById(conversationId, user.id)
+      : await this.createConversation(user.id, {
+          title: 'New Conversation',
+          documentIds: [],
+        });
     if (!conversation) throw new NotFoundError('Conversation not found');
 
     await usageService.assertWithinBudget(user);
 
     const embedding = await embeddingService.embedQuery(question, {
       userId: user.id,
-      conversationId,
+      conversationId: conversation.id,
     });
 
     logger.info('chat embeddings ', {
@@ -136,38 +141,6 @@ export const chatService = {
     let answer = NO_ANSWER_MESSAGE;
     let model: string | undefined;
     let usage = { promptTokens: 0, completionTokens: 0 };
-
-    // if (relevant.length > 0) {
-    //   const history = await messageRepository.getRecentMessages(conversationId, HISTORY_MESSAGES);
-    //   const llm = getLlmProvider();
-    //   const completion = await llm.generate({
-    //     messages: buildPrompt({
-    //       question,
-    //       history: history.map((message) => ({
-    //         role: toLlmRole(message.role),
-    //         content: message.content,
-    //       })),
-    //       chunks: relevant,
-    //     }),
-    //     maxOutputTokens: MAX_OUTPUT_TOKENS,
-    //   });
-
-    //   answer = completion.content;
-    //   model = completion.model;
-    //   usage = {
-    //     promptTokens: completion.promptTokens,
-    //     completionTokens: completion.completionTokens,
-    //   };
-
-    //   await usageService.recordUsage({
-    //     userId: user.id,
-    //     kind: 'CHAT_COMPLETION',
-    //     provider: llm.name,
-    //     model: completion.model,
-    //     ...usage,
-    //     conversationId,
-    //   });
-    // }
 
     appEvents.emit('retrieval.completed', {
       answered: relevant.length > 0,

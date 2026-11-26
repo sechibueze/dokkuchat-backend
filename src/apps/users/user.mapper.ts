@@ -6,7 +6,6 @@ export type PublicUser = Omit<User, 'password' | 'deletedAt'>;
 export type AdminUserView = Omit<User, 'password'>;
 
 export function toPublicUser(user: UserWithRole) {
-  logger.info('user', user);
   const { password: _password, deletedAt: _deletedAt, legacyRole: role, ...rest } = user;
   return { ...rest, role: role };
 }
